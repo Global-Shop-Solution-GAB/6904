@@ -1,0 +1,144 @@
+﻿Program.Sub.ScreenSU.Start
+Gui.F_WOTravelSelection..Create(BaseForm)
+Gui.F_WOTravelSelection..Caption("Work Order Traveler Selection")
+Gui.F_WOTravelSelection..Size(640,368)
+Gui.F_WOTravelSelection..MinX(0)
+Gui.F_WOTravelSelection..MinY(0)
+Gui.F_WOTravelSelection..Position(0,0)
+Gui.F_WOTravelSelection..AlwaysOnTop(False)
+Gui.F_WOTravelSelection..FontName("Tahoma")
+Gui.F_WOTravelSelection..FontSize(8.25)
+Gui.F_WOTravelSelection..ControlBox(True)
+Gui.F_WOTravelSelection..MaxButton(True)
+Gui.F_WOTravelSelection..MinButton(True)
+Gui.F_WOTravelSelection..MousePointer(0)
+Gui.F_WOTravelSelection..Moveable(True)
+Gui.F_WOTravelSelection..Sizeable(True)
+Gui.F_WOTravelSelection..ShowInTaskBar(True)
+Gui.F_WOTravelSelection..TitleBar(True)
+Gui.F_WOTravelSelection..Event(UnLoad,F_WOTravelSelection_UnLoad)
+Gui.F_WOTravelSelection.GsGridTraveler.Create(GsGridControl)
+Gui.F_WOTravelSelection.GsGridTraveler.Enabled(True)
+Gui.F_WOTravelSelection.GsGridTraveler.Visible(True)
+Gui.F_WOTravelSelection.GsGridTraveler.Zorder(0)
+Gui.F_WOTravelSelection.GsGridTraveler.Size(623,319)
+Gui.F_WOTravelSelection.GsGridTraveler.Position(13,14)
+Gui.F_WOTravelSelection.GsGridTraveler.Anchor(15)
+Gui.F_WOTravelSelection.GsGridTraveler.Event(RowCellClick,GsGridTraveler_RowCellClick)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.Intrinsic.Control.SetErrorHandler("Main_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+v.Local.sFile.Declare(String,"")
+v.Local.iCnt.Declare(Long,0)
+v.Local.iRowCnt.Declare(Long,0)
+v.Local.sText.Declare(String,"")
+V.Local.sSql.Declare(String,"")
+V.Local.sTemp.Declare(String,"")
+
+F.Intrinsic.Control.SelectCase(V.Caller.Hook)	
+	F.Intrinsic.Control.Case(50620)
+		F.ODBC.Connection!con.OpenCompanyConnection
+		f.Intrinsic.BDF.Load("AUX001","UpdateJobsView-gvWOOperations-bdf")
+		f.Intrinsic.BDF.ReadRowCount("AUX001",v.Local.iRowCnt)
+		f.Intrinsic.Math.Sub(v.Local.iRowCnt,1,v.Local.iRowCnt)
+		f.Intrinsic.Control.For(v.Local.iCnt,0,v.Local.iRowCnt,1)
+			f.Intrinsic.BDF.ReadRow("AUX001",v.Local.iCnt,v.Local.sText)
+			F.Intrinsic.String.Split(V.Local.sText,"|~|",V.Local.sText)
+			F.Intrinsic.String.Replace(V.Local.sText,"-","",V.Local.sText)
+			F.Intrinsic.String.Build("select rtrim(b.Path)+rtrim(File) as FilePath, File, Description from Link_Data a Left Join ATG_DOC_ASSOC b on cast(a.link_Id as Int) = b.Link_ID Where ID = '{0}' and Type = '00020'",V.Local.sText,V.Local.sSql)
+			F.ODBC.Connection!Con.ExecuteAndReturn(V.Local.sSql,V.Local.sTemp)
+			F.Intrinsic.String.Split(V.Local.sTemp,"#$#",V.Local.sFile)
+			F.Intrinsic.Control.If(v.Local.sFile.UBound,>,0)
+				F.Intrinsic.Control.If(V.DataTable.Selection.Exists)
+					F.Data.DataTable.Close("Selection")
+				F.Intrinsic.Control.EndIf
+				F.Data.DataTable.CreateFromString("Selection",V.Local.sTemp,"FilePath*!*File*!*Description","String*!*String*!*String","*!*","#$#",True)
+				F.Data.DataTable.AddColumn("Selection","Selection",String)
+				Gui.F_WOTravelSelection.GsGridTraveler.AddGridviewFromDatatable("GSel","Selection")
+				Gui.F_WOTravelSelection.GsGridTraveler.SetGridviewProperty("GSel","Editable",False)
+				Gui.F_WOTravelSelection.GsGridTraveler.SetGridviewProperty("GSel","ReadOnly",True)
+				
+				Gui.F_WOTravelSelection.GsGridTraveler.SetColumnProperty("GSel","FilePath","Visible",False)
+				Gui.F_WOTravelSelection.GsGridTraveler.SetColumnProperty("GSel","Selection","Caption","")
+				Gui.F_WOTravelSelection.GsGridTraveler.ColumnEdit("GSel","Selection","EditorButton","Luanch")
+				
+				Gui.F_WOTravelSelection.GsGridTraveler.MainView("GSel")
+				
+				Gui.F_WOTravelSelection..Show
+				
+				Gui.F_WOTravelSelection..WaitForDismiss
+				
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Split(V.Local.sFile,"*!*",V.Local.sFile)
+				F.Intrinsic.Task.ShellExecSync(v.Caller.Handle,"",v.Local.sFile,"","",1)
+			F.Intrinsic.Control.EndIf
+		f.Intrinsic.Control.Next(V.Local.iCnt)
+		F.ODBC.Connection!Con.Close
+	F.Intrinsic.Control.CaseElse
+		F.Intrinsic.Control.End
+		
+F.Intrinsic.Control.EndSelect
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("Main_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: Project {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.Main.End
+
+Program.Sub.GsGridTraveler_RowCellClick.Start
+F.Intrinsic.Control.SetErrorHandler("GsGridTraveler_RowCellClick_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+F.Intrinsic.Control.If(V.Args.Column.UCase,=,"SELECTION")
+	Gui.F_WOTravelSelection..Enabled(False)
+	F.Intrinsic.Task.ShellExecSync(v.Caller.Handle,"",V.DataTable.Selection(V.Args.RowIndex).FilePath!FieldValTrim,"","",1)
+	Gui.F_WOTravelSelection..Enabled(True)
+	Gui.F_WOTravelSelection..Visible(False)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("GsGridTraveler_RowCellClick_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: Project {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.GsGridTraveler_RowCellClick.End
+
+Program.Sub.F_WOTravelSelection_UnLoad.Start
+F.Intrinsic.Control.SetErrorHandler("F_WOTravelSelection_UnLoad_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String,"")
+
+Gui.F_WOTravelSelection..Visible(False)
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("F_WOTravelSelection_UnLoad_Err")
+F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+	F.Intrinsic.String.Build("Project: Project {0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}",V.Ambient.NewLine,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+	F.Intrinsic.UI.Msgbox(V.Local.sError)
+	F.Intrinsic.Control.End
+Function.Intrinsic.Control.EndIf
+Program.Sub.F_WOTravelSelection_UnLoad.End
+
+Program.Sub.Comments.Start
+${$5$}$20.1.8249.18654$}$1
+${$6$}$rking$}$20220915134250070$}$QNdZLVy4bWuiWa9jh1ZTiKVzNnEzrvL4ViiWMBnrnDXCO2w3kL0JsDTaTDrqMJ6O5Tek3KHvhc4=
+Program.Sub.Comments.End
